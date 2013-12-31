@@ -1,5 +1,4 @@
-# RPCUDP
-### Python lib to support [RPC](http://en.wikipedia.org/wiki/Remote_procedure_call) over [UDP](http://en.wikipedia.org/wiki/User_Datagram_Protocol).
+# RPCUDP : [RPC](http://en.wikipedia.org/wiki/Remote_procedure_call) over [UDP](http://en.wikipedia.org/wiki/User_Datagram_Protocol) in Python
 
 RPC over UDP may seem like a silly idea, but things like the [DHT](http://en.wikipedia.org/wiki/Distributed_hash_table) [Kademlia](http://en.wikipedia.org/wiki/Kademlia) require it.  This project is specifically designed for asynchronous [Python Twisted](http://twistedmatrix.com) code to accept and send remote proceedure calls.
 
