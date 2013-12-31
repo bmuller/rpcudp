@@ -11,6 +11,6 @@ setup(
     license="MIT",
     url="http://github.com/bmuller/rpcudp",
     packages=find_packages(),
-    requires=["twisted.internet.protocol.DatagramProtocol"],
-    install_requires=['twisted>=12.0']
+    requires=["twisted.internet.protocol.DatagramProtocol", "umsgpack"],
+    install_requires=['twisted>=12.0', "u-msgpack-python>=1.5"]
 )

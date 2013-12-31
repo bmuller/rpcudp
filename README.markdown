@@ -20,8 +20,9 @@ from rpcudp.protocol import RPCProtocol
 from twisted.internet import reactor
 
 class RPCServer(RPCProtocol):
+    # Any methods starting with "rpc_" are available to clients.
     def rpc_sayhi(self, name):
-        # This could return a Deferred as well
+        # This could return a Deferred as well.
         return "Hello %s" % name
 
 # start a server on UDP port 1234
@@ -50,3 +51,6 @@ reactor.run()
 ```
 
 You can run this example in the example.py file in the root folder.
+
+## Implementation Details
+The protocol is designed to be as small and fast as possible.  Python objects are serialized using [MsgPack](http://msgpack.org/).  All calls must fit within 8K (generally small enough to fit in one datagram packet).
