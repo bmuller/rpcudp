@@ -1,4 +1,4 @@
-from rpcudp import RPCProtocol
+from rpcudp.protocol import RPCProtocol
 from twisted.python import log
 from twisted.internet import reactor
 import sys

@@ -1,18 +1,14 @@
-from twisted.internet import protocol
-from twisted.internet import reactor
-from twisted.internet import defer
-from twisted.python import log
-
 import umsgpack
 import random
 from hashlib import sha1
 from base64 import b64encode
 
+from twisted.internet import protocol
+from twisted.internet import reactor
+from twisted.internet import defer
+from twisted.python import log
 
-class MalformedMessage(Exception):
-    """
-    Message does not contain what is expected.
-    """
+from rpcudp.exceptions import MalformedMessage
 
 
 class RPCProtocol(protocol.DatagramProtocol):
@@ -66,7 +62,7 @@ class RPCProtocol(protocol.DatagramProtocol):
     def _timeout(self, msgID):
         args = (b64encode(msgID), self._waitTimeout)
         log.err("Did not received reply for msg id %s within %i seconds" % args)
-        self._outstanding[msgID][0].callback((False, []))
+        self._outstanding[msgID][0].callback((False, None))
         del self._outstanding[msgID]
 
     def __getattr__(self, name):
