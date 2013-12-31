@@ -37,9 +37,8 @@ from twisted.internet import reactor
 
 class RPCClient(RPCProtocol):
     def handleResult(self, result):
-    	# result will be a tuple - first arg is a boolean indicating
-        # whether a response was received, and the second argument is
-	# the response if one was received.
+    	# result will be a tuple - first arg is a boolean indicating whether a response
+        # was received, and the second argument is the response if one was received.
         if result[0]:
             print "Success! %s" % result[1]
         else:
