@@ -6,9 +6,9 @@ import sys
 log.startLogging(sys.stdout)
 
 class RPCServer(RPCProtocol):
-    def rpc_sayhi(self, name):
-        # This could return a Deferred as well
-        return "Hello %s" % name
+    def rpc_sayhi(self, sender, name):
+        # This could return a Deferred as well. sender is (ip, port)
+        return "Hello %s, you live at %s:%i" % (name, sender[0], sender[1])
 
 server = RPCServer(1234)
 

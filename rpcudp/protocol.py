@@ -51,7 +51,7 @@ class RPCProtocol(protocol.DatagramProtocol):
             msgargs = (self.__class__.__name__, funcname)
             log.err("%s has no callable method rpc_%s; ignoring request" % msgargs)
             return
-        d = defer.maybeDeferred(f, *args)
+        d = defer.maybeDeferred(f, address, *args)
         d.addCallback(self._sendResponse, msgID, address)
 
     def _sendResponse(self, response, msgID, address):
