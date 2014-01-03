@@ -12,13 +12,21 @@ from rpcudp.exceptions import MalformedMessage
 
 
 class RPCProtocol(protocol.DatagramProtocol):
+    noisy = False
+
     def __init__(self, port, waitTimeout=5):
+        """
+        @param port: Integer port to listen on.
+        @param waitTimeout: Consider it a connetion failure if no response
+        within this time window.
+        """
         self._waitTimeout = waitTimeout
         self._outstanding = {}
         reactor.listenUDP(port, self)
 
     def datagramReceived(self, datagram, address):
-        log.msg("recieved datagram from %s" % repr(address))
+        if self.noisy:
+            log.msg("recieved datagram from %s" % repr(address))
         if len(datagram) < 22:
             return
 
@@ -36,7 +44,8 @@ class RPCProtocol(protocol.DatagramProtocol):
         if not msgID in self._outstanding:
             log.err("received unknown message %s from %s; ignoring" % msgargs)
             return
-        log.msg("received response for message id %s from %s" % msgargs)
+        if self.noisy:
+            log.msg("received response for message id %s from %s" % msgargs)
         d, timeout = self._outstanding[msgID]
         timeout.cancel()
         d.callback((True, data))
@@ -55,7 +64,8 @@ class RPCProtocol(protocol.DatagramProtocol):
         d.addCallback(self._sendResponse, msgID, address)
 
     def _sendResponse(self, response, msgID, address):
-        log.msg("sending response for msg id %s to %s" % (b64encode(msgID), address))
+        if self.noisy:
+            log.msg("sending response for msg id %s to %s" % (b64encode(msgID), address))
         txdata = '\x01%s%s' % (msgID, umsgpack.packb(response))
         self.transport.write(txdata, address)
 
@@ -81,7 +91,8 @@ class RPCProtocol(protocol.DatagramProtocol):
                 msg = "Total length of function name and arguments cannot exceed 8K"
                 raise MalformedMessage(msg)
             txdata = '\x00%s%s' % (msgID, data)
-            log.msg("calling remote function %s on %s" % (name, address))
+            if self.noisy:
+                log.msg("calling remote function %s on %s" % (name, address))
             self.transport.write(txdata, address)
             d = defer.Deferred()
             timeout = reactor.callLater(self._waitTimeout, self._timeout, msgID)

@@ -6,6 +6,7 @@ import sys
 log.startLogging(sys.stdout)
 
 class RPCServer(RPCProtocol):
+    noisy = True
     def rpc_sayhi(self, sender, name):
         # This could return a Deferred as well. sender is (ip, port)
         return "Hello %s, you live at %s:%i" % (name, sender[0], sender[1])
@@ -13,6 +14,7 @@ class RPCServer(RPCProtocol):
 server = RPCServer(1234)
 
 class RPCClient(RPCProtocol):
+    noisy = True
     def handleResult(self, result):
         if result[0]:
             print "Success! %s" % result[1]
