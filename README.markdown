@@ -26,7 +26,7 @@ class RPCServer(RPCProtocol):
         return "Hello %s you live at %s:%i" % (name, sender[0], sender[1])
 
 # start a server on UDP port 1234
-server = RPCServer(1234)
+reactor.listenUDP(1234, RPCServer())
 reactor.run()
 ```
 
@@ -45,7 +45,8 @@ class RPCClient(RPCProtocol):
         else:
             print "Response not received."
 
-client = RPCClient(5678)
+client = RPCClient()
+reactor.listenUDP(5678, client)
 client.sayhi(('127.0.0.1', 1234), "Snake Plissken").addCallback(client.handleResult)
 reactor.run()
 ```

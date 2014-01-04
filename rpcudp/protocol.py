@@ -14,15 +14,13 @@ from rpcudp.exceptions import MalformedMessage
 class RPCProtocol(protocol.DatagramProtocol):
     noisy = False
 
-    def __init__(self, port, waitTimeout=5):
+    def __init__(self, waitTimeout=5):
         """
-        @param port: Integer port to listen on.
         @param waitTimeout: Consider it a connetion failure if no response
         within this time window.
         """
         self._waitTimeout = waitTimeout
         self._outstanding = {}
-        reactor.listenUDP(port, self)
 
     def datagramReceived(self, datagram, address):
         if self.noisy:

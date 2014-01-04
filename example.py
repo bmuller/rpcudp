@@ -11,7 +11,7 @@ class RPCServer(RPCProtocol):
         # This could return a Deferred as well. sender is (ip, port)
         return "Hello %s, you live at %s:%i" % (name, sender[0], sender[1])
 
-server = RPCServer(1234)
+reactor.listenUDP(1234, RPCServer())
 
 class RPCClient(RPCProtocol):
     noisy = True
@@ -21,7 +21,8 @@ class RPCClient(RPCProtocol):
         else:
             print "Response not received."
 
-client = RPCClient(5678)
+client = RPCClient()
+reactor.listenUDP(4567, client)
 client.sayhi(('127.0.0.1', 1234), "Snake Plissken").addCallback(client.handleResult)
 
 reactor.run()
