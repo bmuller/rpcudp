@@ -7,7 +7,7 @@ Because of the use of UDP, you will not always know whether or not a procedure c
 ## Installation
 
 ```
-easy_install rpcudp
+pip install rpcudp
 ```
 
 ## Usage

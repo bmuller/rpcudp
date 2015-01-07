@@ -39,7 +39,7 @@ class RPCProtocol(protocol.DatagramProtocol):
 
     def _acceptResponse(self, msgID, data, address):
         msgargs = (b64encode(msgID), address)
-        if not msgID in self._outstanding:
+        if msgID not in self._outstanding:
             log.err("received unknown message %s from %s; ignoring" % msgargs)
             return
         if self.noisy:
