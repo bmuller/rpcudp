@@ -24,8 +24,9 @@ class RPCProtocol(protocol.DatagramProtocol):
 
     def datagramReceived(self, datagram, address):
         if self.noisy:
-            log.msg("recieved datagram from %s" % repr(address))
+            log.msg("received datagram from %s" % repr(address))
         if len(datagram) < 22:
+            log.msg("received datagram too small from %s, ignoring" % repr(address))
             return
 
         msgID = datagram[1:21]
@@ -35,7 +36,9 @@ class RPCProtocol(protocol.DatagramProtocol):
             self._acceptRequest(msgID, data, address)
         elif datagram[0] == '\x01':
             self._acceptResponse(msgID, data, address)
-        # otherwise, don't know the format, don't do anything
+        else:
+            # otherwise, don't know the format, don't do anything
+            log.msg("Received unknown message from %s, ignoring" % repr(address))
 
     def _acceptResponse(self, msgID, data, address):
         msgargs = (b64encode(msgID), address)
@@ -90,7 +93,7 @@ class RPCProtocol(protocol.DatagramProtocol):
                 raise MalformedMessage(msg)
             txdata = '\x00%s%s' % (msgID, data)
             if self.noisy:
-                log.msg("calling remote function %s on %s" % (name, address))
+                log.msg("calling remote function %s on %s (msgid %s)" % (name, address, b64encode(msgID)))
             self.transport.write(txdata, address)
             d = defer.Deferred()
             timeout = reactor.callLater(self._waitTimeout, self._timeout, msgID)
