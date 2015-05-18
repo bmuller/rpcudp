@@ -94,8 +94,8 @@ class RPCProtocol(protocol.DatagramProtocol):
             txdata = '\x00%s%s' % (msgID, data)
             if self.noisy:
                 log.msg("calling remote function %s on %s (msgid %s)" % (name, address, b64encode(msgID)))
-            self.transport.write(txdata, address)
             d = defer.Deferred()
+            self.transport.write(txdata, address)
             timeout = reactor.callLater(self._waitTimeout, self._timeout, msgID)
             self._outstanding[msgID] = (d, timeout)
             return d
