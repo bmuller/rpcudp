@@ -1,5 +1,9 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+
+
+import os
 import umsgpack
-import random
 from hashlib import sha1
 from base64 import b64encode
 
@@ -32,9 +36,9 @@ class RPCProtocol(protocol.DatagramProtocol):
         msgID = datagram[1:21]
         data = umsgpack.unpackb(datagram[21:])
 
-        if datagram[0] == '\x00':
+        if datagram[:1] == b'\x00':
             self._acceptRequest(msgID, data, address)
-        elif datagram[0] == '\x01':
+        elif datagram[:1] == b'\x01':
             self._acceptResponse(msgID, data, address)
         else:
             # otherwise, don't know the format, don't do anything
@@ -67,7 +71,7 @@ class RPCProtocol(protocol.DatagramProtocol):
     def _sendResponse(self, response, msgID, address):
         if self.noisy:
             log.msg("sending response for msg id %s to %s" % (b64encode(msgID), address))
-        txdata = '\x01%s%s' % (msgID, umsgpack.packb(response))
+        txdata = b'\x01' + msgID + umsgpack.packb(response)
         self.transport.write(txdata, address)
 
     def _timeout(self, msgID):
@@ -86,12 +90,12 @@ class RPCProtocol(protocol.DatagramProtocol):
             pass
 
         def func(address, *args):
-            msgID = sha1(str(random.getrandbits(255))).digest()
+            msgID = sha1(os.urandom(32)).digest()
             data = umsgpack.packb([name, args])
             if len(data) > 8192:
                 msg = "Total length of function name and arguments cannot exceed 8K"
                 raise MalformedMessage(msg)
-            txdata = '\x00%s%s' % (msgID, data)
+            txdata = b'\x00' + msgID + data
             if self.noisy:
                 log.msg("calling remote function %s on %s (msgid %s)" % (name, address, b64encode(msgID)))
             self.transport.write(txdata, address)
