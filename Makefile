@@ -14,7 +14,6 @@ help:
 	@echo "COMMANDS:"
 	@echo "  clean          Remove all generated files."
 	@echo "  setup          Setup development environment."
-	@echo "  shell          Open ipython from the development environment."
 	@echo "  test           Run tests."
 	@echo "  lint           Run analysis tools."
 	@echo "  wheel          Build package wheel & save in $(WHEEL_DIR)."
@@ -43,8 +42,6 @@ virtualenv: clean
 
 wheels: virtualenv
 	$(PIP) wheel --wheel-dir=$(WHEEL_DIR) -r requirements.txt
-	$(PIP) wheel --wheel-dir=$(WHEEL_DIR) -r test_requirements.txt
-	$(PIP) wheel --wheel-dir=$(WHEEL_DIR) -r develop_requirements.txt
 
 
 wheel: test
@@ -54,12 +51,6 @@ wheel: test
 
 setup: virtualenv
 	$(PIP) install $(WHEEL_INSTALL_ARGS) -r requirements.txt
-	$(PIP) install $(WHEEL_INSTALL_ARGS) -r test_requirements.txt
-	$(PIP) install $(WHEEL_INSTALL_ARGS) -r develop_requirements.txt
-
-
-shell: setup
-	env/bin/ipython
 
 
 test: setup
