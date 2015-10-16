@@ -79,8 +79,8 @@ publish: test
 
 
 lint: test
-	pep8 --ignore=E303,E251,E201,E202 ./kademlia --max-line-length=140
-	find ./kademlia -name '*.py' | xargs pyflakes
+	pep8 --ignore=E303,E251,E201,E202 ./rpcudp --max-line-length=140
+	find ./rpcudp -name '*.py' | xargs pyflakes
 
 
 # Break in case of bug!
