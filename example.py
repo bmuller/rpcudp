@@ -1,3 +1,6 @@
+from __future__ import print_function
+
+
 from rpcudp.protocol import RPCProtocol
 from twisted.python import log
 from twisted.internet import reactor
@@ -17,9 +20,9 @@ class RPCClient(RPCProtocol):
     noisy = True
     def handleResult(self, result):
         if result[0]:
-            print "Success! %s" % result[1]
+            print("Success! %s" % result[1])
         else:
-            print "Response not received."
+            print("Response not received.")
 
 client = RPCClient()
 reactor.listenUDP(4567, client)
