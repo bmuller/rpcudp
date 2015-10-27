@@ -2,6 +2,7 @@ import umsgpack
 import os
 from hashlib import sha1
 from base64 import b64encode
+from builtins import str
 
 from twisted.internet import protocol
 from twisted.internet import reactor
@@ -9,7 +10,6 @@ from twisted.internet import defer
 from twisted.python import log
 
 from rpcudp.exceptions import MalformedMessage
-
 
 class RPCProtocol(protocol.DatagramProtocol):
     noisy = False
@@ -87,7 +87,7 @@ class RPCProtocol(protocol.DatagramProtocol):
 
         def func(address, *args):
             msgID = sha1(os.urandom(32)).digest()
-            data = umsgpack.packb([name, args])
+            data = umsgpack.packb([str(name), args])
             if len(data) > 8192:
                 msg = "Total length of function name and arguments cannot exceed 8K"
                 raise MalformedMessage(msg)
