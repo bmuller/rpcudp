@@ -2,6 +2,7 @@ import os
 import umsgpack
 from hashlib import sha1
 from base64 import b64encode
+from builtins import str
 
 from twisted.internet import protocol
 from twisted.internet import reactor
@@ -9,7 +10,6 @@ from twisted.internet import defer
 from twisted.python import log
 
 from rpcudp.exceptions import MalformedMessage
-
 
 class RPCProtocol(protocol.DatagramProtocol):
     noisy = False
@@ -72,7 +72,7 @@ class RPCProtocol(protocol.DatagramProtocol):
     def _sendResponse(self, response, msgID, address):
         if self.noisy:
             log.msg("sending response for msg id %s to %s" % (b64encode(msgID), address))
-        txdata = b'\x01' + msgID + umsgpack.packb(response)
+        txdata = b'\x01%s%s' % (msgID, umsgpack.packb(response))
         self.transport.write(txdata, address)
 
     def _timeout(self, msgID):
@@ -92,11 +92,11 @@ class RPCProtocol(protocol.DatagramProtocol):
 
         def func(address, *args):
             msgID = sha1(os.urandom(32)).digest()
-            data = umsgpack.packb([name, args])
+            data = umsgpack.packb([str(name), args])
             if len(data) > 8192:
                 msg = "Total length of function name and arguments cannot exceed 8K"
                 raise MalformedMessage(msg)
-            txdata = b'\x00' + msgID + data
+            txdata = b'\x00%s%s' % (msgID, data)
             if self.noisy:
                 log.msg("calling remote function %s on %s (msgid %s)" % (name, address, b64encode(msgID)))
             self.transport.write(txdata, address)
