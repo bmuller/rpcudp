@@ -15,16 +15,4 @@ class RPCServer(RPCProtocol):
 
 reactor.listenUDP(1234, RPCServer())
 
-class RPCClient(RPCProtocol):
-    noisy = True
-    def handleResult(self, result):
-        if result[0]:
-            print("Success! %s" % result[1])
-        else:
-            print("Response not received.")
-
-client = RPCClient()
-reactor.listenUDP(4567, client)
-client.sayhi(('127.0.0.1', 1234), "Snake Plissken").addCallback(client.handleResult)
-
 reactor.run()
