@@ -97,7 +97,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
             self.transport.sendto(txdata, address)
 
             loop = asyncio.get_event_loop()
-            f = loop.create_future()
+            f = loop.create_future() if hasattr(loop, 'create_future') else asyncio.Future()
             timeout = loop.call_later(self._waitTimeout, self._timeout, msgID)
             self._outstanding[msgID] = (f, timeout)
             return f
