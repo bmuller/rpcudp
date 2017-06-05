@@ -27,7 +27,8 @@ class RPCProtocol(protocol.DatagramProtocol):
         if self.noisy:
             log.msg("received datagram from %s" % repr(address))
         if len(datagram) < 22:
-            log.msg("received datagram too small from %s, ignoring" % repr(address))
+            if self.noisy:
+                log.msg("received datagram too small from %s, ignoring" % repr(address))
             return
 
         msgID = datagram[1:21]
@@ -37,14 +38,15 @@ class RPCProtocol(protocol.DatagramProtocol):
             self._acceptRequest(msgID, data, address)
         elif datagram[:1] == b'\x01':
             self._acceptResponse(msgID, data, address)
-        else:
+        elif self.noisy:
             # otherwise, don't know the format, don't do anything
             log.msg("Received unknown message from %s, ignoring" % repr(address))
 
     def _acceptResponse(self, msgID, data, address):
         msgargs = (b64encode(msgID), address)
         if msgID not in self._outstanding:
-            log.err("received unknown message %s from %s; ignoring" % msgargs)
+            if self.noisy:
+                log.err("received unknown message %s from %s; ignoring" % msgargs)
             return
         if self.noisy:
             log.msg("received response for message id %s from %s" % msgargs)
@@ -60,7 +62,8 @@ class RPCProtocol(protocol.DatagramProtocol):
         f = getattr(self, "rpc_%s" % funcname, None)
         if f is None or not callable(f):
             msgargs = (self.__class__.__name__, funcname)
-            log.err("%s has no callable method rpc_%s; ignoring request" % msgargs)
+            if self.noisy:
+                log.err("%s has no callable method rpc_%s; ignoring request" % msgargs)
             return
         d = defer.maybeDeferred(f, address, *args)
         d.addCallback(self._sendResponse, msgID, address)
@@ -73,7 +76,8 @@ class RPCProtocol(protocol.DatagramProtocol):
 
     def _timeout(self, msgID):
         args = (b64encode(msgID), self._waitTimeout)
-        log.err("Did not received reply for msg id %s within %i seconds" % args)
+        if self.noisy:
+            log.err("Did not received reply for msg id %s within %i seconds" % args)
         self._outstanding[msgID][0].callback((False, None))
         del self._outstanding[msgID]
 
