@@ -1,5 +1,5 @@
-import umsgpack
 import os
+import umsgpack
 from hashlib import sha1
 from base64 import b64encode
 from builtins import str
@@ -67,6 +67,11 @@ class RPCProtocol(protocol.DatagramProtocol):
             return
         d = defer.maybeDeferred(f, address, *args)
         d.addCallback(self._sendResponse, msgID, address)
+        d.addErrback(self._onError)
+
+    def _onError(self, err):
+        log.err(repr(err))
+        return err
 
     def _sendResponse(self, response, msgID, address):
         if self.noisy:
