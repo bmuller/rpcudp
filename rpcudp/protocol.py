@@ -1,13 +1,12 @@
-import os
-from hashlib import sha1
-from base64 import b64encode
 import asyncio
 import logging
+import os
+from base64 import b64encode
+from hashlib import sha1
 
 import umsgpack
 
 from rpcudp.exceptions import MalformedMessage
-
 
 log = logging.getLogger('rpcudp')
 
@@ -27,7 +26,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, datagram, address):
         log.debug("received datagram from %s", address)
         asyncio.ensure_future(self._solveDatagram(datagram, address))
-    
+
     @asyncio.coroutine
     def _solveDatagram(self, datagram, address):
         if len(datagram) < 22:
@@ -82,6 +81,18 @@ class RPCProtocol(asyncio.DatagramProtocol):
         del self._outstanding[msgID]
 
     def __getattr__(self, name):
+        """
+        If name begins with "_" or "rpc_", returns the value of the attribute in question as normal.
+
+        Otherwise, returns the value as normal *if* the attribute exists, but does *not* raise
+        AttributeError if it doesn't.
+
+        Instead, returns a closure, func, which takes an argument "address" and additional arbitrary
+        args (but not kwargs).
+
+        func attempts to call a remote method "rpc_{name}", passing those args, on a node reachable
+        at address.
+        """
         if name.startswith("_") or name.startswith("rpc_"):
             return object.__getattr__(self, name)
 
@@ -97,7 +108,8 @@ class RPCProtocol(asyncio.DatagramProtocol):
                 msg = "Total length of function name and arguments cannot exceed 8K"
                 raise MalformedMessage(msg)
             txdata = b'\x00' + msgID + data
-            log.debug("calling remote function %s on %s (msgid %s)", name, address, b64encode(msgID))
+            log.debug("calling remote function %s on %s (msgid %s)", name, address,
+                      b64encode(msgID))
             self.transport.sendto(txdata, address)
 
             loop = asyncio.get_event_loop()
@@ -105,4 +117,5 @@ class RPCProtocol(asyncio.DatagramProtocol):
             timeout = loop.call_later(self._waitTimeout, self._timeout, msgID)
             self._outstanding[msgID] = (f, timeout)
             return f
+
         return func
