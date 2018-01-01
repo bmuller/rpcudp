@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
-from rpcudp import version
+import rpcudp
 
 setup(
     name="rpcudp",
-    version=version,
+    version=rpcudp.__version__,
     description="RPC via UDP",
     author="Brian Muller",
     author_email="bamuller@gmail.com",
     license="MIT",
     url="http://github.com/bmuller/rpcudp",
     packages=find_packages(),
-    requires=["twisted.internet.protocol.DatagramProtocol", "umsgpack", "future"],
-    install_requires=['twisted>=12.0', "u-msgpack-python>=1.5", "future>=0.6"]
+    install_requires=["u-msgpack-python>=1.5"]
 )

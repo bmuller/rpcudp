@@ -1,20 +1,17 @@
-import umsgpack
+import asyncio
+import logging
 import os
-from hashlib import sha1
 from base64 import b64encode
-from builtins import str
+from hashlib import sha1
 
-from twisted.internet import protocol
-from twisted.internet import reactor
-from twisted.internet import defer
-from twisted.python import log
+import umsgpack
 
 from rpcudp.exceptions import MalformedMessage
 
+log = logging.getLogger('rpcudp')
 
-class RPCProtocol(protocol.DatagramProtocol):
-    noisy = False
 
+class RPCProtocol(asyncio.DatagramProtocol):
     def __init__(self, waitTimeout=5):
         """
         @param waitTimeout: Consider it a connetion failure if no response
@@ -22,39 +19,48 @@ class RPCProtocol(protocol.DatagramProtocol):
         """
         self._waitTimeout = waitTimeout
         self._outstanding = {}
+        self.transport = None
 
-    def datagramReceived(self, datagram, address):
-        if self.noisy:
-            log.msg("received datagram from %s" % repr(address))
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def datagram_received(self, data, addr):
+        log.debug("received datagram from %s", addr)
+        asyncio.ensure_future(self._solveDatagram(data, addr))
+
+    @asyncio.coroutine
+    def _solveDatagram(self, datagram, address):
         if len(datagram) < 22:
-            if self.noisy:
-                log.msg("received datagram too small from %s, ignoring" % repr(address))
+            log.warning("received datagram too small from %s,"
+                        " ignoring", address)
             return
 
         msgID = datagram[1:21]
         data = umsgpack.unpackb(datagram[21:])
 
         if datagram[:1] == b'\x00':
-            self._acceptRequest(msgID, data, address)
+            # schedule accepting request and returning the result
+            asyncio.ensure_future(self._acceptRequest(msgID, data, address))
         elif datagram[:1] == b'\x01':
             self._acceptResponse(msgID, data, address)
         elif self.noisy:
             # otherwise, don't know the format, don't do anything
-            log.msg("Received unknown message from %s, ignoring" % repr(address))
+            log.debug("Received unknown message from %s, ignoring", address)
 
     def _acceptResponse(self, msgID, data, address):
         msgargs = (b64encode(msgID), address)
         if msgID not in self._outstanding:
-            if self.noisy:
-                log.err("received unknown message %s from %s; ignoring" % msgargs)
+            log.warning("received unknown message %s "
+                        "from %s; ignoring", *msgargs)
             return
-        if self.noisy:
-            log.msg("received response for message id %s from %s" % msgargs)
-        d, timeout = self._outstanding[msgID]
+        log.debug("received response %s for message "
+                  "id %s from %s", data, *msgargs)
+        f, timeout = self._outstanding[msgID]
         timeout.cancel()
-        d.callback((True, data))
+        f.set_result((True, data))
         del self._outstanding[msgID]
 
+    @asyncio.coroutine
     def _acceptRequest(self, msgID, data, address):
         if not isinstance(data, list) or len(data) != 2:
             raise MalformedMessage("Could not read packet: %s" % data)
@@ -62,46 +68,65 @@ class RPCProtocol(protocol.DatagramProtocol):
         f = getattr(self, "rpc_%s" % funcname, None)
         if f is None or not callable(f):
             msgargs = (self.__class__.__name__, funcname)
-            if self.noisy:
-                log.err("%s has no callable method rpc_%s; ignoring request" % msgargs)
+            log.warning("%s has no callable method "
+                        "rpc_%s; ignoring request", *msgargs)
             return
-        d = defer.maybeDeferred(f, address, *args)
-        d.addCallback(self._sendResponse, msgID, address)
 
-    def _sendResponse(self, response, msgID, address):
-        if self.noisy:
-            log.msg("sending response for msg id %s to %s" % (b64encode(msgID), address))
+        if not asyncio.iscoroutinefunction(f):
+            f = asyncio.coroutine(f)
+        response = yield from f(address, *args)
+        log.debug("sending response %s for msg id %s to %s",
+                  response, b64encode(msgID), address)
         txdata = b'\x01' + msgID + umsgpack.packb(response)
-        self.transport.write(txdata, address)
+        self.transport.sendto(txdata, address)
 
     def _timeout(self, msgID):
         args = (b64encode(msgID), self._waitTimeout)
-        if self.noisy:
-            log.err("Did not received reply for msg id %s within %i seconds" % args)
-        self._outstanding[msgID][0].callback((False, None))
+        log.error("Did not received reply for msg "
+                  "id %s within %i seconds", *args)
+        self._outstanding[msgID][0].set_result((False, None))
         del self._outstanding[msgID]
 
     def __getattr__(self, name):
+        """
+        If name begins with "_" or "rpc_", returns the value of
+        the attribute in question as normal.
+
+        Otherwise, returns the value as normal *if* the attribute
+        exists, but does *not* raise AttributeError if it doesn't.
+
+        Instead, returns a closure, func, which takes an argument
+        "address" and additional arbitrary args (but not kwargs).
+
+        func attempts to call a remote method "rpc_{name}",
+        passing those args, on a node reachable at address.
+        """
         if name.startswith("_") or name.startswith("rpc_"):
-            return object.__getattr__(self, name)
+            return getattr(super(), name)
 
         try:
-            return object.__getattr__(self, name)
+            return getattr(super(), name)
         except AttributeError:
             pass
 
         def func(address, *args):
             msgID = sha1(os.urandom(32)).digest()
-            data = umsgpack.packb([str(name), args])
+            data = umsgpack.packb([name, args])
             if len(data) > 8192:
-                msg = "Total length of function name and arguments cannot exceed 8K"
-                raise MalformedMessage(msg)
+                raise MalformedMessage("Total length of function "
+                                       "name and arguments cannot exceed 8K")
             txdata = b'\x00' + msgID + data
-            if self.noisy:
-                log.msg("calling remote function %s on %s (msgid %s)" % (name, address, b64encode(msgID)))
-            self.transport.write(txdata, address)
-            d = defer.Deferred()
-            timeout = reactor.callLater(self._waitTimeout, self._timeout, msgID)
-            self._outstanding[msgID] = (d, timeout)
-            return d
+            log.debug("calling remote function %s on %s (msgid %s)",
+                      name, address, b64encode(msgID))
+            self.transport.sendto(txdata, address)
+
+            loop = asyncio.get_event_loop()
+            if hasattr(loop, 'create_future'):
+                f = loop.create_future()
+            else:
+                f = asyncio.Future()
+            timeout = loop.call_later(self._waitTimeout, self._timeout, msgID)
+            self._outstanding[msgID] = (f, timeout)
+            return f
+
         return func
