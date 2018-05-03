@@ -8,7 +8,7 @@ import umsgpack
 
 from rpcudp.exceptions import MalformedMessage
 
-log = logging.getLogger('rpcudp')
+log = logging.getLogger(__name__)
 
 
 class RPCProtocol(asyncio.DatagramProtocol):
@@ -43,7 +43,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
             asyncio.ensure_future(self._acceptRequest(msgID, data, address))
         elif datagram[:1] == b'\x01':
             self._acceptResponse(msgID, data, address)
-        elif self.noisy:
+        else:
             # otherwise, don't know the format, don't do anything
             log.debug("Received unknown message from %s, ignoring", address)
 
