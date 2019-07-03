@@ -7,9 +7,8 @@ class RPCServer(RPCProtocol):
     def rpc_sayhi_quickly(self, sender, name):
         return "Hello %s, you live at %s:%i" % (name, sender[0], sender[1])
 
-    @asyncio.coroutine
-    def rpc_sayhi_slowly(self, sender, name):
-        yield from asyncio.sleep(2)
+    async def rpc_sayhi_slowly(self, sender, name):
+        await asyncio.sleep(2)
         return "Hello %s, you live at %s:%i" % (name, sender[0], sender[1])
 
 

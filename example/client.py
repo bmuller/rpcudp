@@ -3,14 +3,13 @@ import asyncio
 from rpcudp.protocol import RPCProtocol
 
 
-@asyncio.coroutine
-def sayhi(protocol, address):
+async def sayhi(protocol, address):
     # call rpc that returns immediately
-    result = yield from protocol.sayhi_quickly(address, "Fast Snake Plissken")
+    result = await protocol.sayhi_quickly(address, "Fast Snake Plissken")
     print(result[1] if result[0] else "No response received.")
 
     # call rpc that delays for a bit
-    result = yield from protocol.sayhi_slowly(address, "Slow Snake Plissken")
+    result = await protocol.sayhi_slowly(address, "Slow Snake Plissken")
     print(result[1] if result[0] else "No response received.")
 
 

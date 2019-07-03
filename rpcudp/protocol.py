@@ -1,3 +1,6 @@
+"""
+Package for interacting on the network via a Async Protocol
+"""
 import asyncio
 import logging
 import os
@@ -8,16 +11,22 @@ import umsgpack
 
 from rpcudp.exceptions import MalformedMessage
 
-log = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 class RPCProtocol(asyncio.DatagramProtocol):
-    def __init__(self, waitTimeout=5):
+    """
+    Protocol implementation using msgpack to encode messages and asyncio
+    to handle async sending / recieving.
+    """
+    def __init__(self, wait_timeout=5):
         """
-        @param waitTimeout: Consider it a connetion failure if no response
-        within this time window.
+        Create a protocol instance.
+
+        Args:
+            wait_timeout (int): Time to wait for a response before giving up
         """
-        self._waitTimeout = waitTimeout
+        self._wait_timeout = wait_timeout
         self._outstanding = {}
         self.transport = None
 
@@ -25,67 +34,65 @@ class RPCProtocol(asyncio.DatagramProtocol):
         self.transport = transport
 
     def datagram_received(self, data, addr):
-        log.debug("received datagram from %s", addr)
-        asyncio.ensure_future(self._solveDatagram(data, addr))
+        LOG.debug("received datagram from %s", addr)
+        asyncio.ensure_future(self._solve_datagram(data, addr))
 
-    @asyncio.coroutine
-    def _solveDatagram(self, datagram, address):
+    async def _solve_datagram(self, datagram, address):
         if len(datagram) < 22:
-            log.warning("received datagram too small from %s,"
+            LOG.warning("received datagram too small from %s,"
                         " ignoring", address)
             return
 
-        msgID = datagram[1:21]
+        msg_id = datagram[1:21]
         data = umsgpack.unpackb(datagram[21:])
 
         if datagram[:1] == b'\x00':
             # schedule accepting request and returning the result
-            asyncio.ensure_future(self._acceptRequest(msgID, data, address))
+            asyncio.ensure_future(self._accept_request(msg_id, data, address))
         elif datagram[:1] == b'\x01':
-            self._acceptResponse(msgID, data, address)
+            self._accept_response(msg_id, data, address)
         else:
             # otherwise, don't know the format, don't do anything
-            log.debug("Received unknown message from %s, ignoring", address)
+            LOG.debug("Received unknown message from %s, ignoring", address)
 
-    def _acceptResponse(self, msgID, data, address):
-        msgargs = (b64encode(msgID), address)
-        if msgID not in self._outstanding:
-            log.warning("received unknown message %s "
+    def _accept_response(self, msg_id, data, address):
+        msgargs = (b64encode(msg_id), address)
+        if msg_id not in self._outstanding:
+            LOG.warning("received unknown message %s "
                         "from %s; ignoring", *msgargs)
             return
-        log.debug("received response %s for message "
+        LOG.debug("received response %s for message "
                   "id %s from %s", data, *msgargs)
-        f, timeout = self._outstanding[msgID]
+        future, timeout = self._outstanding[msg_id]
         timeout.cancel()
-        f.set_result((True, data))
-        del self._outstanding[msgID]
+        future.set_result((True, data))
+        del self._outstanding[msg_id]
 
-    @asyncio.coroutine
-    def _acceptRequest(self, msgID, data, address):
+    async def _accept_request(self, msg_id, data, address):
         if not isinstance(data, list) or len(data) != 2:
             raise MalformedMessage("Could not read packet: %s" % data)
         funcname, args = data
-        f = getattr(self, "rpc_%s" % funcname, None)
-        if f is None or not callable(f):
+        func = getattr(self, "rpc_%s" % funcname, None)
+        if func is None or not callable(func):
             msgargs = (self.__class__.__name__, funcname)
-            log.warning("%s has no callable method "
+            LOG.warning("%s has no callable method "
                         "rpc_%s; ignoring request", *msgargs)
             return
 
-        if not asyncio.iscoroutinefunction(f):
-            f = asyncio.coroutine(f)
-        response = yield from f(address, *args)
-        log.debug("sending response %s for msg id %s to %s",
-                  response, b64encode(msgID), address)
-        txdata = b'\x01' + msgID + umsgpack.packb(response)
+        if not asyncio.iscoroutinefunction(func):
+            func = asyncio.coroutine(func)
+        response = await func(address, *args)
+        LOG.debug("sending response %s for msg id %s to %s",
+                  response, b64encode(msg_id), address)
+        txdata = b'\x01' + msg_id + umsgpack.packb(response)
         self.transport.sendto(txdata, address)
 
-    def _timeout(self, msgID):
-        args = (b64encode(msgID), self._waitTimeout)
-        log.error("Did not received reply for msg "
+    def _timeout(self, msg_id):
+        args = (b64encode(msg_id), self._wait_timeout)
+        LOG.error("Did not received reply for msg "
                   "id %s within %i seconds", *args)
-        self._outstanding[msgID][0].set_result((False, None))
-        del self._outstanding[msgID]
+        self._outstanding[msg_id][0].set_result((False, None))
+        del self._outstanding[msg_id]
 
     def __getattr__(self, name):
         """
@@ -110,23 +117,24 @@ class RPCProtocol(asyncio.DatagramProtocol):
             pass
 
         def func(address, *args):
-            msgID = sha1(os.urandom(32)).digest()
+            msg_id = sha1(os.urandom(32)).digest()
             data = umsgpack.packb([name, args])
             if len(data) > 8192:
                 raise MalformedMessage("Total length of function "
                                        "name and arguments cannot exceed 8K")
-            txdata = b'\x00' + msgID + data
-            log.debug("calling remote function %s on %s (msgid %s)",
-                      name, address, b64encode(msgID))
+            txdata = b'\x00' + msg_id + data
+            LOG.debug("calling remote function %s on %s (msgid %s)",
+                      name, address, b64encode(msg_id))
             self.transport.sendto(txdata, address)
 
             loop = asyncio.get_event_loop()
             if hasattr(loop, 'create_future'):
-                f = loop.create_future()
+                future = loop.create_future()
             else:
-                f = asyncio.Future()
-            timeout = loop.call_later(self._waitTimeout, self._timeout, msgID)
-            self._outstanding[msgID] = (f, timeout)
-            return f
+                future = asyncio.Future()
+            timeout = loop.call_later(self._wait_timeout,
+                                      self._timeout, msg_id)
+            self._outstanding[msg_id] = (future, timeout)
+            return future
 
         return func
