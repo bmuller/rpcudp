@@ -89,7 +89,7 @@ class RPCProtocol(asyncio.DatagramProtocol):
 
     def _timeout(self, msg_id):
         args = (b64encode(msg_id), self._wait_timeout)
-        LOG.error("Did not received reply for msg "
+        LOG.error("Did not receive reply for msg "
                   "id %s within %i seconds", *args)
         self._outstanding[msg_id][0].set_result((False, None))
         del self._outstanding[msg_id]
