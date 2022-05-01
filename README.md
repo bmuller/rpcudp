@@ -43,8 +43,7 @@ Now, let's make a client script.  Note that we do need to specify a port for the
 import asyncio
 from rpcudp.protocol import RPCProtocol
 
-@asyncio.coroutine
-def sayhi(protocol, address):
+async def sayhi(protocol, address):
     # result will be a tuple - first arg is a boolean indicating whether a response
     # was received, and the second argument is the response if one was received.
     result = await protocol.sayhi(address, "Snake Plissken")
