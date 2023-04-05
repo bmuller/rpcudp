@@ -1,6 +1,7 @@
 """
 Package for interacting on the network via a Async Protocol
 """
+from functools import wraps
 import asyncio
 import logging
 import os
@@ -80,7 +81,16 @@ class RPCProtocol(asyncio.DatagramProtocol):
             return
 
         if not asyncio.iscoroutinefunction(func):
-            func = asyncio.coroutine(func)
+            # ref. https://stackoverflow.com/a/66490669
+            def awaitify(sync_func):
+                """Wrap a synchronous callable to allow ``await``'ing it"""
+                @wraps(sync_func)
+                async def async_func(*args, **kwargs):
+                    return sync_func(*args, **kwargs)
+                return async_func
+
+            func = awaitify(func)
+
         response = await func(address, *args)
         LOG.debug("sending response %s for msg id %s to %s",
                   response, b64encode(msg_id), address)
