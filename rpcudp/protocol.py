@@ -80,8 +80,9 @@ class RPCProtocol(asyncio.DatagramProtocol):
             return
 
         if not asyncio.iscoroutinefunction(func):
-            func = asyncio.coroutine(func)
-        response = await func(address, *args)
+            response = func(address, *args)
+        else:
+            response = await func(address, *args)
         LOG.debug("sending response %s for msg id %s to %s",
                   response, b64encode(msg_id), address)
         txdata = b'\x01' + msg_id + umsgpack.packb(response)
