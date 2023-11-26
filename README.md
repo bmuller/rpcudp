@@ -73,13 +73,5 @@ log.setLevel(logging.DEBUG)
 log.addHandler(logging.StreamHandler())
 ```
 
-## Running Tests
-To run tests:
-
-```
-pip install -r dev-requirements.txt
-pytest
-```
-
 ## Implementation Details
 The protocol is designed to be as small and fast as possible.  Python objects are serialized using [MsgPack](http://msgpack.org/).  All calls must fit within 8K (generally small enough to fit in one datagram packet).
