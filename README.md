@@ -1,5 +1,5 @@
 # RPCUDP : [RPC](http://en.wikipedia.org/wiki/Remote_procedure_call) over [UDP](http://en.wikipedia.org/wiki/User_Datagram_Protocol) in Python
-[![Build Status](https://secure.travis-ci.org/bmuller/rpcudp.png?branch=master)](https://travis-ci.org/bmuller/rpcudp)
+ ![Build Status](https://github.com/bmuller/rpcudp/workflows/ci/badge.svg)
 
 RPC over UDP may seem like a silly idea, but things like the [DHT](http://en.wikipedia.org/wiki/Distributed_hash_table) [Kademlia](http://en.wikipedia.org/wiki/Kademlia) require it.  This project is specifically designed for [asynchronous Python 3](https://docs.python.org/3/library/asyncio.html) code to accept and send remote proceedure calls.
 

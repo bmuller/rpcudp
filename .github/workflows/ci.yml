@@ -1,0 +1,20 @@
+name: ci
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+    name: Python ${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install . && pip install -r dev-requirements.txt
+      - run: pylint rpcudp
+      - run: pycodestyle rpcudp/**/*.py
+      - run: pytest
