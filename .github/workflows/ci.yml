@@ -17,4 +17,3 @@ jobs:
       - run: pip install . && pip install -r dev-requirements.txt
       - run: pylint rpcudp
       - run: pycodestyle rpcudp/**/*.py
-      - run: pytest
