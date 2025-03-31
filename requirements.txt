@@ -1,1 +1,0 @@
-u-msgpack-python>=2.6

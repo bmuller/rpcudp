@@ -30,11 +30,17 @@ class RPCServer(RPCProtocol):
         await some_awaitable()
         return "Hello %s you live at %s:%i" % (name, sender[0], sender[1])
 
-# start a server on UDP port 1234
-loop = asyncio.get_event_loop()
-listen = loop.create_datagram_endpoint(RPCServer, local_addr=('127.0.0.1', 1234))
-transport, protocol = loop.run_until_complete(listen)
-loop.run_forever()
+async def main():
+    loop = asyncio.get_event_loop()
+    # start a server on UDP port 1234
+    transport, protocol = await loop.create_datagram_endpoint(
+        RPCServer, local_addr=("127.0.0.1", 1234)
+    )
+
+    # run indefinitely
+    await asyncio.Event().wait()
+
+asyncio.run(main())
 ```
 
 Now, let's make a client script.  Note that we do need to specify a port for the client as well, since it needs to listen for responses to RPC calls on a UDP port.
@@ -49,15 +55,18 @@ async def sayhi(protocol, address):
     result = await protocol.sayhi(address, "Snake Plissken")
     print(result[1] if result[0] else "No response received.")
 
-# Start local UDP server to be able to handle responses
-loop = asyncio.get_event_loop()
-listen = loop.create_datagram_endpoint(RPCProtocol, local_addr=('127.0.0.1', 4567))
-transport, protocol = loop.run_until_complete(listen)
+async def main():
+    loop = asyncio.get_event_loop()
+    # Start local UDP server to be able to handle responses
+    transport, protocol = await loop.create_datagram_endpoint(
+        RPCProtocol, local_addr=("127.0.0.1", 4567)
+    )
 
-# Call remote UDP server to say hi
-func = sayhi(protocol, ('127.0.0.1', 1234))
-loop.run_until_complete(func)
-loop.run_forever()
+    # Call remote UDP server to say hi
+    await sayhi(protocol, ("127.0.0.1", 1234))
+    transport.close()
+
+asyncio.run(main())
 ```
 
 You can run this example in the examples folder (client.py and server.py).

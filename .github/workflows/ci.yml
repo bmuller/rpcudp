@@ -6,14 +6,18 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        python-version: [ '3.9', '3.10', '3.11', '3.12', '3.13' ]
     name: Python ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-      - run: pip install . && pip install -r dev-requirements.txt
-      - run: pylint rpcudp
-      - run: pycodestyle rpcudp/*.py
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install the project
+        run: uv sync --all-extras --dev
+      - name: Check format
+        run: uv run ruff format --check
+      - name: Lint
+        run: uv run ruff check --output-format=github .

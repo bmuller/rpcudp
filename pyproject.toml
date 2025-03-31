@@ -1,0 +1,44 @@
+[project]
+name = "rpcudp"
+dynamic = ["version"]
+description = "Asynchronous RPC via UDP"
+readme = "README.md"
+authors = [
+    { name = "Brian Muller", email = "bamuller@gmail.com" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+requires-python = ">=3.9"
+dependencies = [
+    "u-msgpack-python>=2.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/bmuller/rpcudp"
+Issues = "https://github.com/bmuller/rpcudp/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["rpcudp"]
+
+[tool.hatch.version]
+path = "rpcudp/__init__.py"
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.2",
+]
