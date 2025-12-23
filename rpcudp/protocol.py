@@ -3,9 +3,11 @@ Package for interacting on the network via a Async Protocol
 """
 
 import asyncio
+import inspect
 import logging
 import os
 from base64 import b64encode
+from functools import wraps
 from hashlib import sha1
 
 import umsgpack
@@ -13,6 +15,9 @@ import umsgpack
 from rpcudp.exceptions import MalformedMessage
 
 LOG = logging.getLogger(__name__)
+_RPC_METHOD_PREFIX = "rpc_"
+
+__all__ = ["RPCProtocol"]
 
 
 class RPCProtocol(asyncio.DatagramProtocol):
@@ -33,6 +38,9 @@ class RPCProtocol(asyncio.DatagramProtocol):
         self.transport = None
 
     def connection_made(self, transport):
+        """
+        Callback function made by asyncio once a connection has been initiated.
+        """
         self.transport = transport
 
     def datagram_received(self, data, addr):
@@ -71,10 +79,10 @@ class RPCProtocol(asyncio.DatagramProtocol):
         if not isinstance(data, list) or len(data) != 2:
             raise MalformedMessage(f"Could not read packet: {data}")
         funcname, args = data
-        func = getattr(self, f"rpc_{funcname}", None)
+        func = getattr(self, f"{_RPC_METHOD_PREFIX}{funcname}", None)
         if func is None or not callable(func):
-            msgargs = (self.__class__.__name__, funcname)
-            LOG.warning("%s has no callable method rpc_%s; ignoring request", *msgargs)
+            msgargs = (self.__class__.__name__, _RPC_METHOD_PREFIX, funcname)
+            LOG.warning("%s has no callable method %s%s; ignoring request", *msgargs)
             return
 
         if not asyncio.iscoroutinefunction(func):
@@ -95,6 +103,33 @@ class RPCProtocol(asyncio.DatagramProtocol):
         LOG.error("Did not receive reply for msg id %s within %i seconds", *args)
         self._outstanding[msg_id][0].set_result((False, None))
         del self._outstanding[msg_id]
+
+    def method(self, fn):
+        """
+        Decorator for registering local methods as remotely callable RPC handlers.
+        """
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            return fn(*args, **kwargs)
+
+        funcname = fn.__name__
+        if inspect.isclass(fn) or not callable(fn) or funcname == "<lambda>":
+            reason = (
+                "classes are not allowed"
+                if inspect.isclass(fn)
+                else "object is not callable"
+                if not callable(fn)
+                else "lambda functions are not allowed"
+            )
+
+            raise TypeError(f"Invalid RPC handler '{funcname}', {reason}.")
+
+        if not funcname.startswith(_RPC_METHOD_PREFIX):
+            funcname = f"{_RPC_METHOD_PREFIX}{funcname}"
+
+        setattr(self, funcname, fn)
+        return wrapper
 
     def __getattr__(self, name):
         """

@@ -43,6 +43,37 @@ async def main():
 asyncio.run(main())
 ```
 
+Alternatively, we could also develop a more function-based RPC protocol. NOTE the "rpc_" prefix is optional when using the `method` decorator. Both "rpc_sayhi" and "sayhi" are valid method names.
+
+```python
+import asyncio
+from rpcudp.protocol import RPCProtocol
+
+rpc = RPCProtocol()
+
+
+@rpc.method
+def rpc_sayhi(sender, name):
+    return "Hello %s you live at %s:%i" % (name, sender[0], sender[1])
+
+@rpc.method
+async def rpc_sayhi_slowly(sender, name):
+    await some_awaitable()
+    return "Hello %s you live at %s:%i" % (name, sender[0], sender[1])
+
+async def main():
+    loop = asyncio.get_event_loop()
+    # start a server on UDP port 1234
+    transport, protocol = await loop.create_datagram_endpoint(
+        lambda: rpc, local_addr=("127.0.0.1", 1234)
+    )
+
+    # run indefinitely
+    await asyncio.Event().wait()
+
+asyncio.run(main())
+```
+
 Now, let's make a client script.  Note that we do need to specify a port for the client as well, since it needs to listen for responses to RPC calls on a UDP port.
 
 ```python
@@ -69,7 +100,7 @@ async def main():
 asyncio.run(main())
 ```
 
-You can run this example in the examples folder (client.py and server.py).
+You can run this example in the examples folder (client.py and base/server.py or decorator/server.py).
 
 ## Logging
 This library uses the standard [Python logging library](https://docs.python.org/3/library/logging.html).  To see debut output printed to STDOUT, for instance, use:
